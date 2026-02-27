@@ -80,6 +80,23 @@ npm run prisma:seed
 npm run dev
 ```
 
+## Non-Docker MySQL quick fix (P1001)
+If you are **not using Docker**, do **not** use `@db:3306` in `DATABASE_URL`.
+Use localhost/127.0.0.1 instead:
+
+```env
+DATABASE_URL="mysql://root:2342sk@127.0.0.1:3306/mabiguild"
+```
+
+Then run:
+```bash
+npx prisma migrate dev --name init
+npm run prisma:seed
+```
+
+If you use Docker Compose, the app container uses `db:3306` automatically from `docker-compose.yml`.
+
+
 ## Seed credentials
 - Email: `admin@example.com`
 - Password: `password123`
