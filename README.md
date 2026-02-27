@@ -89,4 +89,4 @@ npm run dev
 - You need local wildcard subdomain resolution for localhost development (dnsmasq or hosts entries for each tested subdomain).
 
 ## Database note
-If you only have MySQL installed, this project now runs against MySQL by default (`db:3306`). If you run locally without Docker, set `DATABASE_URL` to your local MySQL DSN (e.g. `mysql://root:root@127.0.0.1:3306/mabiguild`).
+If you only have MySQL installed, this project now runs against MySQL by default (`db:3306`). If you run locally without Docker, set `DATABASE_URL` to your local MySQL DSN (e.g. `mysql://root:2342sk@127.0.0.1:3306/mabiguild`).
