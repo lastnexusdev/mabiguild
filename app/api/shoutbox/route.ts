@@ -37,6 +37,10 @@ export async function POST(request: Request) {
     data: { siteId: ctx.site.id, userId: ctx.user.id, body: parsed.data.body }
   });
 
+  await prisma.auditLog.create({
+    data: { siteId: ctx.site.id, actorUserId: ctx.user.id, action: "shoutbox.message.created", metadata: { messageId: created.id } }
+  });
+
   return NextResponse.json(created);
 }
 
@@ -48,5 +52,8 @@ export async function DELETE(request: Request) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   await prisma.shoutMessage.deleteMany({ where: { id, siteId: ctx.site.id } });
+  await prisma.auditLog.create({
+    data: { siteId: ctx.site.id, actorUserId: ctx.user.id, action: "shoutbox.message.deleted", metadata: { messageId: id } }
+  });
   return NextResponse.json({ ok: true });
 }

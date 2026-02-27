@@ -11,5 +11,6 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
   await prisma.ban.deleteMany({ where: { siteId: admin.site.id, userId: parsed.data.userId } });
+  await prisma.auditLog.create({ data: { siteId: admin.site.id, actorUserId: admin.user.id, action: "member.unbanned", metadata: { userId: parsed.data.userId } } });
   return NextResponse.redirect(new URL("/admin/members", request.url));
 }

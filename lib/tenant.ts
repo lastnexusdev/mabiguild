@@ -2,8 +2,9 @@ import { headers } from "next/headers";
 import { MembershipRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { env } from "@/lib/env";
 
-const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "localhost";
+const ROOT_DOMAIN = env.ROOT_DOMAIN;
 
 export function getSubdomainFromHost(host: string | null) {
   if (!host) return null;

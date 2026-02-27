@@ -47,6 +47,14 @@ Next.js 14 App Router + TypeScript + Tailwind + Prisma + MySQL + Docker Compose.
   - all forum/page/menu/widget/shoutbox/member/admin queries scoped by `siteId`
   - admin/mod tools require membership role checks
 
+
+## Production readiness upgrades included
+- Environment variable validation at startup (`lib/env.ts`).
+- Stricter middleware security headers (COOP, permissions policy, DNS prefetch policy, HSTS in production).
+- Avatar upload MIME whitelist and size enforcement.
+- Audit logging for shoutbox moderation and member role/ban actions.
+- Health endpoint: `GET /api/health` validates API + DB connectivity.
+
 ## Data Models
 - User, Site, SiteMembership, AuditLog
 - Page, Menu

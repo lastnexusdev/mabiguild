@@ -14,5 +14,6 @@ export async function POST(request: Request) {
   if (!membership) return NextResponse.json({ error: "Membership not found" }, { status: 404 });
 
   await prisma.siteMembership.update({ where: { id: membership.id }, data: { role: parsed.data.role } });
+  await prisma.auditLog.create({ data: { siteId: admin.site.id, actorUserId: admin.user.id, action: "member.role.updated", metadata: { membershipId: membership.id, role: parsed.data.role } } });
   return NextResponse.redirect(new URL("/admin/members", request.url));
 }

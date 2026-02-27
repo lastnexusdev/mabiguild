@@ -19,5 +19,7 @@ export async function POST(request: Request) {
     create: { siteId: admin.site.id, userId: membership.userId, reason: parsed.data.reason || null }
   });
 
+  await prisma.auditLog.create({ data: { siteId: admin.site.id, actorUserId: admin.user.id, action: "member.banned", metadata: { userId: membership.userId, reason: parsed.data.reason || null } } });
+
   return NextResponse.redirect(new URL("/admin/members", request.url));
 }

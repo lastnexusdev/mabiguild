@@ -5,6 +5,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSiteMembership } from "@/lib/tenant";
 
+const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+
 export async function POST(request: Request) {
   const ctx = await requireSiteMembership();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,10 +16,14 @@ export async function POST(request: Request) {
   const file = form.get("avatar");
   if (!(file instanceof File)) return NextResponse.json({ error: "Avatar required" }, { status: 400 });
 
+  if (!ALLOWED_MIME.has(file.type)) {
+    return NextResponse.json({ error: "Only PNG, JPG, and WEBP are allowed" }, { status: 400 });
+  }
+
   const bytes = Buffer.from(await file.arrayBuffer());
   if (bytes.length > 2 * 1024 * 1024) return NextResponse.json({ error: "Max size is 2MB" }, { status: 400 });
 
-  const ext = file.type.includes("png") ? "png" : file.type.includes("jpeg") || file.type.includes("jpg") ? "jpg" : "webp";
+  const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp";
   const fileName = `${ctx.site.id}-${ctx.user.id}-${randomUUID()}.${ext}`;
 
   const uploadsDir = join(process.cwd(), "public", "uploads");
