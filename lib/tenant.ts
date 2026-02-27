@@ -27,14 +27,8 @@ export async function requireSiteMembership(minRole: MembershipRole = "MEMBER") 
   if (!site || !session?.user?.id) return null;
 
   const membership = await prisma.siteMembership.findUnique({
-    where: {
-      userId_siteId: {
-        userId: session.user.id,
-        siteId: site.id
-      }
-    }
+    where: { userId_siteId: { userId: session.user.id, siteId: site.id } }
   });
-
   if (!membership) return null;
 
   const roleOrder: MembershipRole[] = ["MEMBER", "ADMIN", "OWNER"];
@@ -48,5 +42,12 @@ export async function getSiteScopedMemberships(siteId: string) {
     where: { siteId },
     include: { user: true },
     orderBy: { createdAt: "asc" }
+  });
+}
+
+export async function getSiteMenus(siteId: string) {
+  return prisma.menu.findMany({
+    where: { siteId },
+    orderBy: { position: "asc" }
   });
 }

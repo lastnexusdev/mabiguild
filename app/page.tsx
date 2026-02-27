@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PlatformNav } from "@/components/platform-nav";
-import { getSiteFromRequest, getSiteScopedMemberships } from "@/lib/tenant";
+import { SiteLayout } from "@/components/site-layout";
+import { getSiteFromRequest, getSiteMenus, getSiteScopedMemberships } from "@/lib/tenant";
 
 export default async function HomePage() {
   const site = await getSiteFromRequest();
@@ -11,35 +12,48 @@ export default async function HomePage() {
         <PlatformNav />
         <main className="mx-auto max-w-5xl p-8">
           <h1 className="mb-4 text-4xl font-bold">Create your own community site</h1>
-          <p className="mb-6 text-zinc-300">
-            Sign up, claim a subdomain, and run your own isolated community.
-          </p>
-          <Link href="/register" className="rounded bg-sky-600 px-4 py-2 text-white">Get Started</Link>
+          <p className="mb-6 text-zinc-300">Sign up, claim a subdomain, and run your own isolated community.</p>
+          <Link href="/register" className="rounded bg-sky-600 px-4 py-2 text-white">
+            Get Started
+          </Link>
         </main>
       </>
     );
   }
 
-  const members = await getSiteScopedMemberships(site.id);
+  const [menus, members] = await Promise.all([getSiteMenus(site.id), getSiteScopedMemberships(site.id)]);
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <div className="mb-6 rounded border border-zinc-800 bg-zinc-900 p-5">
-        <h1 className="text-3xl font-bold">{site.name}</h1>
-        <p className="text-sm text-zinc-400">{site.subdomain}.{process.env.ROOT_DOMAIN}</p>
-      </div>
+    <SiteLayout site={site} menus={menus}>
+      <section className="grid gap-4 md:grid-cols-3">
+        <article className="rounded border border-zinc-800 bg-zinc-900 p-4">
+          <h2 className="mb-2 text-lg font-semibold">Welcome</h2>
+          <p className="text-sm text-zinc-300">{site.homepageIntro || "Configure your homepage intro in admin settings."}</p>
+        </article>
 
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">Members</h2>
-        <div className="space-y-2">
-          {members.map((membership) => (
-            <article key={membership.id} className="rounded border border-zinc-800 bg-zinc-900 p-3">
-              <p className="font-medium">{membership.user.username}</p>
-              <p className="text-sm text-zinc-400">{membership.role}</p>
-            </article>
-          ))}
-        </div>
+        <article className="rounded border border-zinc-800 bg-zinc-900 p-4">
+          <h2 className="mb-2 text-lg font-semibold">Latest Members</h2>
+          <ul className="space-y-1 text-sm text-zinc-300">
+            {members.slice(0, 8).map((membership) => (
+              <li key={membership.id}>
+                {membership.user.username} — {membership.role}
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="rounded border border-zinc-800 bg-zinc-900 p-4">
+          <h2 className="mb-2 text-lg font-semibold">Quick Links</h2>
+          <ul className="space-y-1 text-sm">
+            <li>
+              <Link href="/admin">Admin Panel</Link>
+            </li>
+            <li>
+              <Link href="/p/about">About Page</Link>
+            </li>
+          </ul>
+        </article>
       </section>
-    </main>
+    </SiteLayout>
   );
 }

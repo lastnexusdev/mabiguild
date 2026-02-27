@@ -21,7 +21,9 @@ async function main() {
     update: {},
     create: {
       name: "Demo Community",
-      subdomain: "demo"
+      subdomain: "demo",
+      description: "A seeded demo tenant.",
+      bannerUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200"
     }
   });
 
@@ -35,12 +37,23 @@ async function main() {
     }
   });
 
-  await prisma.auditLog.create({
-    data: {
+  await prisma.menu.createMany({
+    data: [
+      { siteId: demoSite.id, label: "Home", url: "/", position: 0 },
+      { siteId: demoSite.id, label: "About", url: "/p/about", position: 1 }
+    ],
+    skipDuplicates: true
+  });
+
+  await prisma.page.upsert({
+    where: { siteId_slug: { siteId: demoSite.id, slug: "about" } },
+    update: {},
+    create: {
       siteId: demoSite.id,
-      actorUserId: admin.id,
-      action: "seed.demo_site_created",
-      metadata: { subdomain: demoSite.subdomain }
+      title: "About",
+      slug: "about",
+      content: "# About Demo Community\n\nThis is a seeded markdown page.",
+      isPublished: true
     }
   });
 }
