@@ -1,0 +1,386 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String   @unique
+  passwordHash   String
+  displayName    String?
+  avatarUrl      String?
+  bio            String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastSeen       DateTime @default(now())
+  isGlobalAdmin  Boolean  @default(false)
+
+  sessions       Session[]
+  memberships    SiteMembership[]
+  posts          Post[]
+  threads        Thread[]
+  pages          Page[]
+  shoutMessages  ShoutMessage[]
+  auditLogs      AuditLog[]       @relation("AuditActor")
+  bans           Ban[]
+  threadReads    ThreadReadState[]
+  postEdits      PostEditHistory[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(references: [id], fields: [userId], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ─── Sites / Tenants ──────────────────────────────────────────────────────────
+
+model Site {
+  id          String   @id @default(cuid())
+  subdomain   String   @unique
+  name        String
+  description String?  @db.Text
+  bannerUrl   String?
+  logoUrl     String?
+  theme       String   @default("dark")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ownerId     String
+
+  memberships      SiteMembership[]
+  roles            SiteRole[]
+  pages            Page[]
+  menus            Menu[]
+  menuItems        MenuItem[]
+  widgetPlacements WidgetPlacement[]
+  forumCategories  ForumCategory[]
+  forums           Forum[]
+  threads          Thread[]
+  posts            Post[]
+  shoutMessages    ShoutMessage[]
+  bans             Ban[]
+  auditLogs        AuditLog[]
+  threadReads      ThreadReadState[]
+  postEdits        PostEditHistory[]
+
+  @@map("sites")
+}
+
+// ─── RBAC ─────────────────────────────────────────────────────────────────────
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+model SiteMembership {
+  id        String         @id @default(cuid())
+  userId    String
+  siteId    String
+  role      MembershipRole @default(MEMBER)
+  joinedAt  DateTime       @default(now())
+  isBanned  Boolean        @default(false)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site      Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  userRoles UserSiteRole[]
+
+  @@unique([userId, siteId])
+  @@map("site_memberships")
+}
+
+model SiteRole {
+  id          String   @id @default(cuid())
+  siteId      String
+  name        String
+  color       String   @default("#888888")
+  isDefault   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  postCountThreshold Int? // auto-rank threshold
+
+  site        Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  userRoles   UserSiteRole[]
+
+  @@unique([siteId, name])
+  @@map("site_roles")
+}
+
+enum PermissionKey {
+  manage_site
+  manage_pages
+  manage_forums
+  moderate_posts
+  manage_members
+  manage_roles
+  manage_widgets
+  manage_shoutbox
+}
+
+model RolePermission {
+  id         String        @id @default(cuid())
+  roleId     String
+  permission PermissionKey
+
+  role       SiteRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permission])
+  @@map("role_permissions")
+}
+
+model UserSiteRole {
+  id           String @id @default(cuid())
+  membershipId String
+  roleId       String
+
+  membership   SiteMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         SiteRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, roleId])
+  @@map("user_site_roles")
+}
+
+// ─── CMS ──────────────────────────────────────────────────────────────────────
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Page {
+  id          String     @id @default(cuid())
+  siteId      String
+  authorId    String
+  title       String
+  slug        String
+  content     String     @db.LongText
+  status      PageStatus @default(DRAFT)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  site        Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  author      User @relation(fields: [authorId], references: [id])
+
+  @@unique([siteId, slug])
+  @@map("pages")
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+model Menu {
+  id        String   @id @default(cuid())
+  siteId    String
+  name      String
+  location  String   @default("primary")
+  createdAt DateTime @default(now())
+
+  site      Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  items     MenuItem[]
+
+  @@unique([siteId, location])
+  @@map("menus")
+}
+
+model MenuItem {
+  id         String   @id @default(cuid())
+  siteId     String
+  menuId     String
+  label      String
+  url        String
+  sortOrder  Int      @default(0)
+  parentId   String?
+
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  menu       Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parent     MenuItem?  @relation("MenuItemChildren", fields: [parentId], references: [id])
+  children   MenuItem[] @relation("MenuItemChildren")
+
+  @@map("menu_items")
+}
+
+// ─── Widgets ──────────────────────────────────────────────────────────────────
+
+model WidgetPlacement {
+  id         String @id @default(cuid())
+  siteId     String
+  widgetType String // "shoutbox", "members_online", "recent_threads", "text", etc.
+  column     Int    @default(1) // 1, 2, or 3
+  sortOrder  Int    @default(0)
+  config     String @db.Text @default("{}") // JSON config
+
+  site       Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@map("widget_placements")
+}
+
+// ─── Forums ───────────────────────────────────────────────────────────────────
+
+model ForumCategory {
+  id          String @id @default(cuid())
+  siteId      String
+  name        String
+  description String? @db.Text
+  sortOrder   Int    @default(0)
+
+  site        Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  forums      Forum[]
+
+  @@map("forum_categories")
+}
+
+model Forum {
+  id           String @id @default(cuid())
+  siteId       String
+  categoryId   String
+  name         String
+  description  String? @db.Text
+  sortOrder    Int    @default(0)
+  threadCount  Int    @default(0)
+  postCount    Int    @default(0)
+  isLocked     Boolean @default(false)
+
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  category     ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  threads      Thread[]
+
+  @@map("forums")
+}
+
+model Thread {
+  id          String   @id @default(cuid())
+  siteId      String
+  forumId     String
+  authorId    String
+  title       String
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  viewCount   Int      @default(0)
+  replyCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastPostAt  DateTime @default(now())
+
+  site        Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  forum       Forum   @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  author      User    @relation(fields: [authorId], references: [id])
+  posts       Post[]
+  readStates  ThreadReadState[]
+
+  @@map("threads")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  siteId      String
+  threadId    String
+  authorId    String
+  content     String   @db.LongText
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  site        Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  thread      Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author      User    @relation(fields: [authorId], references: [id])
+  editHistory PostEditHistory[]
+
+  @@map("posts")
+}
+
+model PostEditHistory {
+  id        String   @id @default(cuid())
+  siteId    String
+  postId    String
+  editorId  String
+  content   String   @db.LongText
+  editedAt  DateTime @default(now())
+
+  site      Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  editor    User @relation(fields: [editorId], references: [id])
+
+  @@map("post_edit_histories")
+}
+
+model ThreadReadState {
+  id          String   @id @default(cuid())
+  siteId      String
+  userId      String
+  threadId    String
+  lastReadAt  DateTime @default(now())
+
+  site        Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread      Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@map("thread_read_states")
+}
+
+// ─── Shoutbox ────────────────────────────────────────────────────────────────
+
+model ShoutMessage {
+  id        String   @id @default(cuid())
+  siteId    String
+  userId    String
+  message   String   @db.Text
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  site      Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id])
+
+  @@map("shout_messages")
+}
+
+// ─── Bans ─────────────────────────────────────────────────────────────────────
+
+model Ban {
+  id         String    @id @default(cuid())
+  siteId     String
+  userId     String
+  bannedById String
+  reason     String?   @db.Text
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  isActive   Boolean   @default(true)
+
+  site       Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id])
+
+  @@map("bans")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  siteId      String?
+  actorId     String
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    String?  @db.Text // JSON
+  createdAt   DateTime @default(now())
+
+  site        Site? @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  actor       User  @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
