@@ -2,8 +2,16 @@ import { signOut } from "@/lib/auth";
 
 export default function LogoutPage() {
   return (
-    <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }} className="p-8">
-      <button className="bg-zinc-800 px-4 py-2 rounded">Logout</button>
-    </form>
+    <main className="mx-auto mt-10 max-w-md p-4">
+      <h1 className="mb-4 text-2xl font-bold">Logout</h1>
+      <form
+        action={async () => {
+          "use server";
+          await signOut({ redirectTo: "/" });
+        }}
+      >
+        <button className="rounded bg-zinc-800 px-4 py-2">Confirm logout</button>
+      </form>
+    </main>
   );
 }

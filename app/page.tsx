@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { PlatformNav } from "@/components/platform-nav";
-import { SiteShell } from "@/components/site-shell";
-import { getSiteFromRequest } from "@/lib/tenant";
-import { prisma } from "@/lib/prisma";
-import { Shoutbox } from "@/components/shoutbox";
+import { getSiteFromRequest, getSiteScopedMemberships } from "@/lib/tenant";
 
 export default async function HomePage() {
   const site = await getSiteFromRequest();
@@ -12,32 +9,37 @@ export default async function HomePage() {
     return (
       <>
         <PlatformNav />
-        <section className="max-w-4xl mx-auto p-12">
-          <h1 className="text-5xl font-bold mb-4">Build your own guild community.</h1>
-          <p className="text-zinc-300 mb-8">Create a tenant-isolated Enjin-style site with forums, pages, widgets, and member roles.</p>
-          <Link href="/register" className="bg-sky-600 text-white px-4 py-2 rounded">Create your site</Link>
-        </section>
+        <main className="mx-auto max-w-5xl p-8">
+          <h1 className="mb-4 text-4xl font-bold">Create your own community site</h1>
+          <p className="mb-6 text-zinc-300">
+            Sign up, claim a subdomain, and run your own isolated community.
+          </p>
+          <Link href="/register" className="rounded bg-sky-600 px-4 py-2 text-white">Get Started</Link>
+        </main>
       </>
     );
   }
 
-  const widgets = await prisma.widgetPlacement.findMany({ where: { siteId: site.id }, orderBy: [{ column: "asc" }, { position: "asc" }] });
+  const members = await getSiteScopedMemberships(site.id);
+
   return (
-    <SiteShell site={site}>
-      <h2 className="text-2xl font-semibold mb-4">Homepage Widgets</h2>
-      <div className="grid md:grid-cols-3 gap-4">
-        {[0,1,2].map((col) => (
-          <div key={col} className="space-y-3">
-            {widgets.filter((w) => w.column === col).map((widget) => (
-              <article key={widget.id} className="border border-zinc-800 rounded p-3 bg-zinc-900">
-                <h3 className="font-semibold">{widget.title}</h3>
-                <p className="text-zinc-300 text-sm">{widget.content}</p>
-              </article>
-            ))}
-          </div>
-        ))}
+    <main className="mx-auto max-w-5xl p-8">
+      <div className="mb-6 rounded border border-zinc-800 bg-zinc-900 p-5">
+        <h1 className="text-3xl font-bold">{site.name}</h1>
+        <p className="text-sm text-zinc-400">{site.subdomain}.{process.env.ROOT_DOMAIN}</p>
       </div>
-      <div className="mt-6"><Shoutbox /></div>
-    </SiteShell>
+
+      <section>
+        <h2 className="mb-3 text-xl font-semibold">Members</h2>
+        <div className="space-y-2">
+          {members.map((membership) => (
+            <article key={membership.id} className="rounded border border-zinc-800 bg-zinc-900 p-3">
+              <p className="font-medium">{membership.user.username}</p>
+              <p className="text-sm text-zinc-400">{membership.role}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }

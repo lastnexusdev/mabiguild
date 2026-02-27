@@ -1,37 +1,61 @@
-# MabiGuild (Enjin-style Multi-tenant Community Platform)
+# Multi-tenant Community Platform
 
-Next.js 14 + TypeScript + Prisma + PostgreSQL + Tailwind + NextAuth.
+Next.js 14 App Router + TypeScript + Tailwind + Prisma + PostgreSQL + Docker Compose.
 
-## Features
-- Root domain (`platform.localhost`) for marketing/auth/dashboard.
-- Subdomain tenants (`mysite.platform.localhost`) resolved in `middleware.ts`.
-- Single-db tenancy with hard `siteId` scoping across site entities.
-- Per-site membership roles (`OWNER`, `ADMIN`, `MODERATOR`, `MEMBER`) + permissions.
-- CMS pages, forums/threads/posts, shoutbox with polling, members/profiles, admin panel sections.
-- Audit log for administrative actions.
-- Input validation via Zod, password hashing with bcrypt, cookie-backed sessions with NextAuth.
+## Implemented scope
+- Auth: register/login/logout with NextAuth session cookies.
+- Multi-tenancy via subdomain middleware:
+  - root domain serves platform routes
+  - subdomain serves tenant site routes
+- Models: `User`, `Site`, `SiteMembership`, `AuditLog`.
+- Platform dashboard:
+  - list all sites the current user belongs to
+  - create site wizard (`name` + `subdomain`)
+  - subdomain validation + reserved words + uniqueness checks
+- Site creation automatically creates OWNER membership for creator.
+- Tenant isolation helpers used by site-scoped queries.
+- Seed data: one demo user + one demo site.
 
-## Quick start (Docker)
-1. Copy env values:
+## Routes
+### Platform routes (root domain)
+- `/` marketing page
+- `/register`
+- `/login`
+- `/logout`
+- `/dashboard`
+- `/dashboard/sites/new`
+
+### Site routes (subdomain)
+- `/` tenant site homepage (site info + site members)
+
+## Tenant isolation design
+- Middleware extracts subdomain and forwards it in `x-tenant-subdomain`.
+- `getSiteFromRequest()` resolves current `Site` from host/subdomain.
+- `requireSiteMembership()` resolves current user membership **for current site only**.
+- Site-scoped data access always includes `where: { siteId: currentSite.id }`.
+
+## Local setup (Docker)
+1. Copy environment file
    ```bash
    cp .env.example .env
    ```
-2. Start services:
+2. Start services
    ```bash
    docker compose up --build
    ```
-3. In another shell, run migrations + seed:
+3. Run migration and seed
    ```bash
    docker compose exec web npx prisma migrate dev --name init
    docker compose exec web npm run prisma:seed
    ```
-4. Open:
-   - Root: `http://platform.localhost:3000`
-   - Demo tenant after seed: `http://demo.platform.localhost:3000`
+4. Open root domain
+   - `http://platform.localhost:3000`
+5. Demo subdomain (after seed)
+   - `http://demo.platform.localhost:3000`
 
-> You need local DNS mapping for wildcard subdomains in development (e.g. using `dnsmasq` or manual hosts for test subdomains).
+> You need local DNS mapping for wildcard localhost subdomains (for example dnsmasq), or explicit hosts entries for subdomains you test.
 
-## Local (without Docker)
+## Local setup (without Docker)
 ```bash
 npm install
 cp .env.example .env
@@ -40,14 +64,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-## Core architecture
-- **Tenant resolution**: `middleware.ts` sets `x-tenant-subdomain`; `lib/tenant.ts` maps to `Site`.
-- **Isolation**: all site data queries include `siteId` and scoped lookups (`findFirst` with `siteId`).
-- **Auth**: NextAuth credentials provider + secure cookie sessions.
-- **Rate limiting**: lightweight in-memory limiter for login/register/shoutbox.
-
-## Scripts
-- `npm run dev`
-- `npm run build`
-- `npm run prisma:migrate`
-- `npm run prisma:seed`
+## Seed credentials
+- Email: `admin@example.com`
+- Password: `password123`
+- Demo site: `demo.platform.localhost`

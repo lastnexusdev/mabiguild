@@ -12,6 +12,16 @@ export const loginSchema = z.object({
 });
 
 export const createSiteSchema = z.object({
-  name: z.string().min(2).max(50),
+  name: z.string().min(2).max(60),
   subdomain: z.string().min(3).max(32).regex(/^[a-z0-9-]+$/)
 });
+
+export const RESERVED_SUBDOMAINS = new Set([
+  "www",
+  "admin",
+  "api",
+  "platform",
+  "mail",
+  "app",
+  "dashboard"
+]);

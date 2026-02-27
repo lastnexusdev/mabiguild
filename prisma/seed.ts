@@ -1,43 +1,55 @@
-import { PrismaClient, PermissionKey } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  for (const key of Object.values(PermissionKey)) {
-    await prisma.permission.upsert({
-      where: { key },
-      update: {},
-      create: { key }
-    });
-  }
-
   const passwordHash = await bcrypt.hash("password123", 12);
-  const user = await prisma.user.upsert({
-    where: { email: "owner@example.com" },
+
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@example.com" },
     update: {},
     create: {
-      email: "owner@example.com",
-      username: "owner",
+      email: "admin@example.com",
+      username: "admin",
       passwordHash
     }
   });
 
-  const site = await prisma.site.upsert({
+  const demoSite = await prisma.site.upsert({
     where: { subdomain: "demo" },
     update: {},
     create: {
-      name: "Demo Guild",
-      subdomain: "demo",
-      description: "Seeded demo community"
+      name: "Demo Community",
+      subdomain: "demo"
     }
   });
 
   await prisma.siteMembership.upsert({
-    where: { userId_siteId: { userId: user.id, siteId: site.id } },
+    where: { userId_siteId: { userId: admin.id, siteId: demoSite.id } },
     update: { role: "OWNER" },
-    create: { userId: user.id, siteId: site.id, role: "OWNER", bio: "Site owner" }
+    create: {
+      userId: admin.id,
+      siteId: demoSite.id,
+      role: "OWNER"
+    }
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      siteId: demoSite.id,
+      actorUserId: admin.id,
+      action: "seed.demo_site_created",
+      metadata: { subdomain: demoSite.subdomain }
+    }
   });
 }
 
-main().finally(() => prisma.$disconnect());
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
