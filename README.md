@@ -1,6 +1,6 @@
 # Multi-tenant Community Platform
 
-Next.js 14 App Router + TypeScript + Tailwind + Prisma + PostgreSQL + Docker Compose.
+Next.js 14 App Router + TypeScript + Tailwind + Prisma + MySQL + Docker Compose.
 
 ## Features
 - Credentials auth with NextAuth session cookies (`/register`, `/login`, `/logout`).
@@ -87,3 +87,6 @@ npm run dev
 
 ## Notes
 - You need local wildcard subdomain resolution for localhost development (dnsmasq or hosts entries for each tested subdomain).
+
+## Database note
+If you only have MySQL installed, this project now runs against MySQL by default (`db:3306`). If you run locally without Docker, set `DATABASE_URL` to your local MySQL DSN (e.g. `mysql://root:root@127.0.0.1:3306/mabiguild`).
