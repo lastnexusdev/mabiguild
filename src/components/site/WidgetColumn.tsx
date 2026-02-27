@@ -8,13 +8,15 @@ export default async function WidgetColumn({
   widget,
   siteId,
   userId,
+  isMod,
 }: {
   widget: WidgetPlacement;
   siteId: string;
   userId?: string;
+  isMod?: boolean;
 }) {
   if (widget.widgetType === "shoutbox") {
-    return <ShoutboxWidget siteId={siteId} userId={userId} />;
+    return <ShoutboxWidget siteId={siteId} userId={userId} isMod={isMod} />;
   }
 
   if (widget.widgetType === "recent_threads") {

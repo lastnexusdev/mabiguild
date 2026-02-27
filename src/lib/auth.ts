@@ -19,6 +19,7 @@ export const lucia = new Lucia(adapter, {
       username: attributes.username,
       displayName: attributes.displayName,
       avatarUrl: attributes.avatarUrl,
+      bio: attributes.bio,
       isGlobalAdmin: attributes.isGlobalAdmin,
     };
   },
@@ -32,6 +33,7 @@ declare module "lucia" {
       username: string;
       displayName: string | null;
       avatarUrl: string | null;
+      bio: string | null;
       isGlobalAdmin: boolean;
     };
   }

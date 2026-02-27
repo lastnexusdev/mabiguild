@@ -48,6 +48,7 @@ export async function replyAction(
 
   const cleanContent = DOMPurify.sanitize(content);
 
+  // Run inside transaction
   await prisma.$transaction([
     prisma.post.create({
       data: {
@@ -70,5 +71,10 @@ export async function replyAction(
     }),
   ]);
 
-  redirect(`/thread/${threadId}?page=999`);
+  // Calculate the last page (15 posts per page) so we scroll to the new post
+  const totalPosts = await prisma.post.count({
+    where: { threadId, siteId, isDeleted: false },
+  });
+  const lastPage = Math.ceil(totalPosts / 15);
+  redirect(`/thread/${threadId}${lastPage > 1 ? `?page=${lastPage}` : ""}`);
 }

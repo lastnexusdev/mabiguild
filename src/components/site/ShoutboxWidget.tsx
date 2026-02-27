@@ -7,6 +7,7 @@ interface ShoutMessage {
   id: string;
   message: string;
   createdAt: string;
+  userId: string;
   user: {
     username: string;
     displayName: string | null;
@@ -17,15 +18,18 @@ interface ShoutMessage {
 export default function ShoutboxWidget({
   siteId,
   userId,
+  isMod,
 }: {
   siteId: string;
   userId?: string;
+  isMod?: boolean;
 }) {
   const [messages, setMessages] = useState<ShoutMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isFirstLoad = useRef(true);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -35,7 +39,7 @@ export default function ShoutboxWidget({
         setMessages(data);
       }
     } catch {
-      // ignore
+      // ignore network errors silently
     }
   }, [siteId]);
 
@@ -45,8 +49,12 @@ export default function ShoutboxWidget({
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
+  // Only auto-scroll on first load, not on polling updates
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isFirstLoad.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      isFirstLoad.current = false;
+    }
   }, [messages]);
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -63,7 +71,8 @@ export default function ShoutboxWidget({
       });
       if (res.ok) {
         setInput("");
-        fetchMessages();
+        await fetchMessages();
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       } else {
         const d = await res.json();
         setError(d.error ?? "Failed to send.");
@@ -72,6 +81,17 @@ export default function ShoutboxWidget({
       setError("Failed to send.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      await fetch(`/api/sites/${siteId}/shout/${messageId}`, {
+        method: "DELETE",
+      });
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch {
+      // ignore
     }
   };
 
@@ -85,18 +105,38 @@ export default function ShoutboxWidget({
           <p className="text-slate-500 text-xs">No messages yet. Say hi!</p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className="flex gap-2">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-              {(m.user.displayName ?? m.user.username)[0]?.toUpperCase()}
-            </div>
+          <div key={m.id} className="flex gap-2 group">
+            {m.user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={m.user.avatarUrl}
+                alt=""
+                className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                {(m.user.displayName ?? m.user.username)[0]?.toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-blue-600 text-xs">
-                {m.user.displayName ?? m.user.username}
-              </span>
-              <span className="text-slate-400 text-xs ml-1">
-                {timeAgo(m.createdAt)}
-              </span>
-              <p className="text-slate-700 dark:text-slate-300 break-words">
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-blue-600 text-xs">
+                  {m.user.displayName ?? m.user.username}
+                </span>
+                <span className="text-slate-400 text-xs">
+                  {timeAgo(m.createdAt)}
+                </span>
+                {(isMod || m.userId === userId) && (
+                  <button
+                    onClick={() => deleteMessage(m.id)}
+                    className="text-xs text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+                    title="Delete"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <p className="text-slate-700 dark:text-slate-300 break-words text-xs">
                 {m.message}
               </p>
             </div>
@@ -104,6 +144,7 @@ export default function ShoutboxWidget({
         ))}
         <div ref={bottomRef} />
       </div>
+
       {userId ? (
         <div className="border-t border-slate-200 dark:border-slate-700 p-2 flex-shrink-0">
           {error && <p className="text-red-500 text-xs mb-1">{error}</p>}

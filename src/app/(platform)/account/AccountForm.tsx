@@ -5,19 +5,14 @@ import { updateAccountAction } from "./actions";
 
 const initialState = { error: "", success: false };
 
-interface User {
+interface LuciaUser {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
-  bio?: string | null;
+  bio: string | null;
 }
 
-// Extend User to include bio from database attributes
-interface UserWithBio extends User {
-  bio?: string | null;
-}
-
-export default function AccountForm({ user }: { user: UserWithBio }) {
+export default function AccountForm({ user }: { user: LuciaUser }) {
   const [state, formAction, pending] = useActionState(
     updateAccountAction,
     initialState
@@ -37,8 +32,11 @@ export default function AccountForm({ user }: { user: UserWithBio }) {
       )}
 
       <div>
-        <label className="label">Username</label>
+        <label className="label" htmlFor="username-display">
+          Username
+        </label>
         <input
+          id="username-display"
           type="text"
           value={user.username}
           disabled
@@ -74,6 +72,14 @@ export default function AccountForm({ user }: { user: UserWithBio }) {
           className="input"
           placeholder="https://example.com/avatar.jpg"
         />
+        {user.avatarUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.avatarUrl}
+            alt="Avatar preview"
+            className="mt-2 w-12 h-12 rounded-full object-cover border"
+          />
+        )}
       </div>
 
       <div>
@@ -84,7 +90,7 @@ export default function AccountForm({ user }: { user: UserWithBio }) {
           id="bio"
           name="bio"
           rows={3}
-          defaultValue={(user as UserWithBio).bio ?? ""}
+          defaultValue={user.bio ?? ""}
           maxLength={300}
           className="input resize-none"
           placeholder="A short bio about yourself..."

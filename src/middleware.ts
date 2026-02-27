@@ -4,9 +4,12 @@ import { getSubdomainFromHostname } from "./lib/tenant";
 export const config = {
   matcher: [
     /*
-     * Match all request paths except static files and internals
+     * Match all paths EXCEPT:
+     * - _next/static, _next/image (Next.js internals)
+     * - favicon and static assets
+     * - /api/ routes (MUST NOT be rewritten – client fetch calls go here directly)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
   ],
 };
 
@@ -15,17 +18,17 @@ export function middleware(req: NextRequest) {
   const hostname = req.headers.get("host") ?? "";
   const subdomain = getSubdomainFromHostname(hostname);
 
-  // Clone the URL so we can mutate it
   const response = NextResponse.next();
 
   if (subdomain) {
-    // Rewrite to /sites/[subdomain]/... route group
-    // e.g. myguild.platform.com/forums → /sites/myguild/forums
+    // Rewrite subdomain path to the /sites/[subdomain]/... route segment.
+    // myguild.platform.com/forums → internal /sites/myguild/forums
+    // myguild.platform.com/       → internal /sites/myguild
     const newUrl = new URL(req.url);
-    newUrl.pathname = `/sites/${subdomain}${url.pathname}`;
+    const cleanPath = url.pathname === "/" ? "" : url.pathname;
+    newUrl.pathname = `/sites/${subdomain}${cleanPath}`;
 
     const rewriteResponse = NextResponse.rewrite(newUrl);
-    // Pass the subdomain as a header so layouts can read it
     rewriteResponse.headers.set("x-subdomain", subdomain);
     return rewriteResponse;
   }

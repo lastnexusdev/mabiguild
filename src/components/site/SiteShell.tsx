@@ -2,6 +2,7 @@ import { validateRequest } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import type { Site, Menu, MenuItem } from "@prisma/client";
+import { joinSiteAction } from "@/app/sites/[subdomain]/actions";
 
 type MenuWithItems = Menu & {
   items: (MenuItem & { children: MenuItem[] })[];
@@ -30,6 +31,9 @@ export default async function SiteShell({
   const primaryMenu = site.menus[0];
   const isDark = site.theme === "dark";
 
+  // Bind siteId into the server action
+  const joinAction = joinSiteAction.bind(null, site.id);
+
   return (
     <div className={isDark ? "dark" : ""}>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -55,7 +59,7 @@ export default async function SiteShell({
                 <img
                   src={site.logoUrl}
                   alt={site.name}
-                  className="w-16 h-16 rounded-lg border-2 border-white shadow-lg"
+                  className="w-16 h-16 rounded-lg border-2 border-white shadow-lg object-cover"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-lg bg-white/20 backdrop-blur border-2 border-white/50 flex items-center justify-center text-2xl text-white shadow-lg">
@@ -79,41 +83,41 @@ export default async function SiteShell({
         {/* Nav */}
         <nav className="bg-slate-800 dark:bg-slate-900 border-b border-slate-700 sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto">
               {primaryMenu?.items.map((item) => (
                 <Link
                   key={item.id}
                   href={item.url}
-                  className="px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                  className="px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors whitespace-nowrap"
                 >
                   {item.label}
                 </Link>
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
               {user ? (
                 <>
                   {membership && (
                     <Link
                       href={`/u/${user.username}`}
-                      className="text-sm text-slate-300 hover:text-white"
+                      className="text-sm text-slate-300 hover:text-white hidden sm:block"
                     >
                       {user.displayName ?? user.username}
                     </Link>
                   )}
                   {!membership && (
-                    <form action="/api/site/join" method="POST">
-                      <input type="hidden" name="siteId" value={site.id} />
-                      <button
-                        type="submit"
-                        className="btn-primary btn-sm btn"
-                      >
+                    /* Server action form — works on subdomain without API redirect */
+                    <form action={joinAction}>
+                      <button type="submit" className="btn-primary btn-sm btn">
                         Join Site
                       </button>
                     </form>
                   )}
-                  <Link href="/logout" className="text-xs text-slate-400 hover:text-white">
+                  <Link
+                    href="/logout"
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
                     Logout
                   </Link>
                 </>
