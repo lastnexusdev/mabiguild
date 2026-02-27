@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  username     String           @unique
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  memberships  SiteMembership[]
+  auditLogs    AuditLog[]       @relation("AuditActor")
+}
+
+model Site {
+  id            String           @id @default(cuid())
+  name          String
+  subdomain     String           @unique
+  description   String?
+  bannerUrl     String?
+  homepageIntro String?          @db.Text
+  createdAt     DateTime         @default(now())
+  memberships   SiteMembership[]
+  auditLogs     AuditLog[]
+  pages         Page[]
+  menus         Menu[]
+}
+
+model SiteMembership {
+  id        String         @id @default(cuid())
+  userId    String
+  siteId    String
+  role      MembershipRole @default(MEMBER)
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site      Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteId])
+  @@index([siteId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  siteId      String
+  actorUserId String
+  action      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  actor       User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([siteId, createdAt])
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  siteId      String
+  title       String
+  slug        String
+  content     String   @db.Text
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, slug])
+  @@index([siteId, isPublished])
+}
+
+model Menu {
+  id        String     @id @default(cuid())
+  siteId    String
+  label     String
+  url       String
+  position  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  site      Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, position])
+  @@unique([siteId, label, url])
+}
