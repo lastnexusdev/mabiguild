@@ -9,6 +9,13 @@ export default async function AdminSettingsPage() {
   if (!ctx) return notFound();
   const menus = await getSiteMenus(ctx.site.id);
 
+  const thresholds = (ctx.site.rankThresholds as Record<string, number> | null) || {
+    member: 0,
+    moderator: 50,
+    admin: 200,
+    owner: 500
+  };
+
   async function updateSettings(formData: FormData) {
     "use server";
     const secured = await requireSiteMembership("ADMIN");
@@ -18,7 +25,12 @@ export default async function AdminSettingsPage() {
       name: formData.get("name"),
       description: formData.get("description"),
       bannerUrl: formData.get("bannerUrl"),
-      homepageIntro: formData.get("homepageIntro")
+      homepageIntro: formData.get("homepageIntro"),
+      autoRankEnabled: formData.get("autoRankEnabled") === "on",
+      rankMember: Number(formData.get("rankMember") || 0),
+      rankModerator: Number(formData.get("rankModerator") || 50),
+      rankAdmin: Number(formData.get("rankAdmin") || 200),
+      rankOwner: Number(formData.get("rankOwner") || 500)
     });
     if (!parsed.success) return;
 
@@ -28,7 +40,14 @@ export default async function AdminSettingsPage() {
         name: parsed.data.name,
         description: parsed.data.description || null,
         bannerUrl: parsed.data.bannerUrl || null,
-        homepageIntro: parsed.data.homepageIntro || null
+        homepageIntro: parsed.data.homepageIntro || null,
+        autoRankEnabled: parsed.data.autoRankEnabled,
+        rankThresholds: {
+          member: parsed.data.rankMember,
+          moderator: parsed.data.rankModerator,
+          admin: parsed.data.rankAdmin,
+          owner: parsed.data.rankOwner
+        }
       }
     });
 
@@ -66,6 +85,18 @@ export default async function AdminSettingsPage() {
           placeholder="Homepage intro"
           className="h-32 w-full rounded border border-zinc-700 bg-zinc-950 p-2"
         />
+
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="autoRankEnabled" defaultChecked={ctx.site.autoRankEnabled} /> Enable auto-rank by post count
+        </label>
+
+        <div className="grid gap-2 md:grid-cols-4">
+          <input name="rankMember" type="number" defaultValue={thresholds.member ?? 0} className="rounded border border-zinc-700 bg-zinc-950 p-2" placeholder="MEMBER" />
+          <input name="rankModerator" type="number" defaultValue={thresholds.moderator ?? 50} className="rounded border border-zinc-700 bg-zinc-950 p-2" placeholder="MODERATOR" />
+          <input name="rankAdmin" type="number" defaultValue={thresholds.admin ?? 200} className="rounded border border-zinc-700 bg-zinc-950 p-2" placeholder="ADMIN" />
+          <input name="rankOwner" type="number" defaultValue={thresholds.owner ?? 500} className="rounded border border-zinc-700 bg-zinc-950 p-2" placeholder="OWNER" />
+        </div>
+
         <button className="rounded bg-sky-600 px-4 py-2 text-white">Save</button>
       </form>
     </SiteLayout>

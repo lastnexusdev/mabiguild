@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteLayout } from "@/components/site-layout";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,7 @@ export default async function ThreadView({ params }: { params: { threadId: strin
   if (!site) return notFound();
 
   const [menus, member] = await Promise.all([getSiteMenus(site.id), requireSiteMembership()]);
+  const ban = member ? await prisma.ban.findUnique({ where: { siteId_userId: { siteId: site.id, userId: member.user.id } } }) : null;
 
   const thread = await prisma.thread.findFirst({
     where: { id: params.threadId, siteId: site.id },
@@ -48,7 +50,7 @@ export default async function ThreadView({ params }: { params: { threadId: strin
       <div className="space-y-3">
         {thread.posts.map((post) => (
           <article key={post.id} className="rounded border border-zinc-800 bg-zinc-900 p-3">
-            <p className="text-sm font-semibold">{post.author.username}</p>
+            <p className="text-sm font-semibold"><Link href={`/u/${post.author.username}`}>{post.author.username}</Link></p>
             <p className="whitespace-pre-wrap text-sm">{post.body}</p>
             <p className="mt-2 text-xs text-zinc-400">{post.edits.length ? `Edited ${post.edits.length}x` : ""}</p>
             {member && member.user.id === post.authorId ? (
@@ -62,7 +64,7 @@ export default async function ThreadView({ params }: { params: { threadId: strin
         ))}
       </div>
 
-      {member && !thread.locked ? (
+      {member && !ban && !thread.locked ? (
         <form action="/api/forums/reply" method="post" className="mt-6 space-y-2 rounded border border-zinc-800 bg-zinc-900 p-4">
           <input type="hidden" name="threadId" value={thread.id} />
           <textarea name="body" className="h-24 w-full rounded border border-zinc-700 bg-zinc-950 p-2" placeholder="Reply" />

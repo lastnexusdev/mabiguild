@@ -7,6 +7,9 @@ export async function POST(request: Request) {
   const [site, member] = await Promise.all([getSiteFromRequest(), requireSiteMembership()]);
   if (!site || !member) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const ban = await prisma.ban.findUnique({ where: { siteId_userId: { siteId: site.id, userId: member.user.id } } });
+  if (ban) return NextResponse.json({ error: "You are banned on this site" }, { status: 403 });
+
   const form = Object.fromEntries((await request.formData()).entries());
   const parsed = createThreadSchema.safeParse(form);
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });

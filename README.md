@@ -10,6 +10,15 @@ Next.js 14 App Router + TypeScript + Tailwind + Prisma + PostgreSQL + Docker Com
   - header banner
   - nav menu
   - homepage widgets in 3 columns
+- Members and profiles:
+  - members list at `/members`
+  - per-site profile at `/u/[username]`
+  - avatar upload (local storage in `/public/uploads`)
+  - profile bio, join date, post count
+  - lastSeen and online indicator
+- Ranks:
+  - role color labels for OWNER/ADMIN/MODERATOR/MEMBER
+  - optional auto-rank by post count with per-site thresholds (site settings)
 - CMS pages with markdown:
   - create draft/published pages in admin
   - public slug routing `/p/[slug]`
@@ -30,16 +39,19 @@ Next.js 14 App Router + TypeScript + Tailwind + Prisma + PostgreSQL + Docker Com
   - reorder by position
   - choose column (0, 1, 2)
   - widgets: Recent Threads, Online Members, Shoutbox, Site Stats
-- Admin area on subdomains (`/admin`): settings, pages, menus, forums, widgets.
+- Admin area on subdomains (`/admin`): settings, pages, menus, forums, widgets, members.
+- Admin member tools:
+  - assign membership roles
+  - ban/unban members
 - Tenant isolation and RBAC:
-  - all forum/page/menu/widget/shoutbox/admin queries scoped by `siteId`
+  - all forum/page/menu/widget/shoutbox/member/admin queries scoped by `siteId`
   - admin/mod tools require membership role checks
 
 ## Data Models
 - User, Site, SiteMembership, AuditLog
 - Page, Menu
 - ForumCategory, Forum, Thread, Post, PostEditHistory, ThreadReadState
-- ShoutMessage, WidgetPlacement
+- ShoutMessage, WidgetPlacement, Ban
 
 ## Local setup (Docker)
 1. Copy env:

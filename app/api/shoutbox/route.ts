@@ -22,6 +22,9 @@ export async function POST(request: Request) {
   const ctx = await requireSiteMembership();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const ban = await prisma.ban.findUnique({ where: { siteId_userId: { siteId: ctx.site.id, userId: ctx.user.id } } });
+  if (ban) return NextResponse.json({ error: "You are banned on this site" }, { status: 403 });
+
   const key = `${ctx.site.id}:${ctx.user.id}:shout`;
   if (!checkRateLimit(key, 6, 30_000)) {
     return NextResponse.json({ error: "Rate limit exceeded. Please wait." }, { status: 429 });

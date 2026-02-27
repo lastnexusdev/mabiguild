@@ -8,8 +8,8 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@example.com" },
-    update: {},
-    create: { email: "admin@example.com", username: "admin", passwordHash }
+    update: { lastSeenAt: new Date() },
+    create: { email: "admin@example.com", username: "admin", passwordHash, lastSeenAt: new Date() }
   });
 
   const demoSite = await prisma.site.upsert({
@@ -20,21 +20,24 @@ async function main() {
       subdomain: "demo",
       description: "A seeded demo tenant.",
       bannerUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200",
-      homepageIntro: "Welcome to the demo guild forums."
+      homepageIntro: "Welcome to the demo guild forums.",
+      autoRankEnabled: true,
+      rankThresholds: { member: 0, moderator: 20, admin: 100, owner: 300 }
     }
   });
 
   await prisma.siteMembership.upsert({
     where: { userId_siteId: { userId: admin.id, siteId: demoSite.id } },
-    update: { role: "OWNER" },
-    create: { userId: admin.id, siteId: demoSite.id, role: "OWNER" }
+    update: { role: "OWNER", bio: "Site founder", avatarUrl: "/uploads/default-avatar.svg" },
+    create: { userId: admin.id, siteId: demoSite.id, role: "OWNER", bio: "Site founder", avatarUrl: "/uploads/default-avatar.svg" }
   });
 
   await prisma.menu.createMany({
     data: [
       { siteId: demoSite.id, label: "Home", url: "/", position: 0 },
       { siteId: demoSite.id, label: "Forums", url: "/forums", position: 1 },
-      { siteId: demoSite.id, label: "About", url: "/p/about", position: 2 }
+      { siteId: demoSite.id, label: "Members", url: "/members", position: 2 },
+      { siteId: demoSite.id, label: "About", url: "/p/about", position: 3 }
     ],
     skipDuplicates: true
   });
@@ -90,18 +93,14 @@ async function main() {
         siteId: demoSite.id,
         widget: widget as WidgetType,
         enabled: true,
-        column: idx === 1 ? 1 : idx === 2 || idx === 3 ? 2 : 0,
+        column: idx === 1 ? 1 : idx >= 2 ? 2 : 0,
         position: idx === 3 ? 1 : 0
       }
     });
   }
 
   await prisma.shoutMessage.create({
-    data: {
-      siteId: demoSite.id,
-      userId: admin.id,
-      body: "Welcome to the shoutbox!"
-    }
+    data: { siteId: demoSite.id, userId: admin.id, body: "Welcome to the shoutbox!" }
   });
 }
 

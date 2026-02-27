@@ -31,6 +31,8 @@ export async function requireSiteMembership(minRole: MembershipRole = "MEMBER") 
   });
   if (!membership) return null;
 
+  await prisma.user.update({ where: { id: session.user.id }, data: { lastSeenAt: new Date() } });
+
   const roleOrder: MembershipRole[] = ["MEMBER", "MODERATOR", "ADMIN", "OWNER"];
   if (roleOrder.indexOf(membership.role) < roleOrder.indexOf(minRole)) return null;
 

@@ -20,7 +20,12 @@ export const updateSiteSchema = z.object({
   name: z.string().min(2).max(60),
   description: z.string().max(500).optional().or(z.literal("")),
   bannerUrl: z.string().url().optional().or(z.literal("")),
-  homepageIntro: z.string().max(5000).optional().or(z.literal(""))
+  homepageIntro: z.string().max(5000).optional().or(z.literal("")),
+  autoRankEnabled: z.boolean().default(false),
+  rankMember: z.number().int().min(0).max(100000).default(0),
+  rankModerator: z.number().int().min(0).max(100000).default(50),
+  rankAdmin: z.number().int().min(0).max(100000).default(200),
+  rankOwner: z.number().int().min(0).max(100000).default(500)
 });
 
 export const createMenuSchema = z.object({
@@ -66,6 +71,24 @@ export const updateWidgetSchema = z.object({
   enabled: z.boolean(),
   column: z.number().int().min(0).max(2),
   position: z.number().int().min(0).max(20)
+});
+
+export const updateProfileSchema = z.object({
+  bio: z.string().max(600).optional().or(z.literal(""))
+});
+
+export const updateMembershipRoleSchema = z.object({
+  membershipId: z.string().min(1),
+  role: z.enum(["OWNER", "ADMIN", "MODERATOR", "MEMBER"])
+});
+
+export const banMemberSchema = z.object({
+  membershipId: z.string().min(1),
+  reason: z.string().max(200).optional().or(z.literal(""))
+});
+
+export const unbanMemberSchema = z.object({
+  userId: z.string().min(1)
 });
 
 export const RESERVED_SUBDOMAINS = new Set([

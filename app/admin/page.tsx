@@ -12,7 +12,7 @@ export default async function AdminHomePage() {
   return (
     <SiteLayout site={ctx.site} menus={menus}>
       <h2 className="mb-4 text-2xl font-bold">Admin</h2>
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-6">
         <Link href="/admin/settings" className="rounded border border-zinc-800 bg-zinc-900 p-4">
           Site Settings
         </Link>
@@ -27,6 +27,9 @@ export default async function AdminHomePage() {
         </Link>
         <Link href="/admin/widgets" className="rounded border border-zinc-800 bg-zinc-900 p-4">
           Homepage Widgets
+        </Link>
+        <Link href="/admin/members" className="rounded border border-zinc-800 bg-zinc-900 p-4">
+          Members
         </Link>
       </div>
     </SiteLayout>

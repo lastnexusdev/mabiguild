@@ -9,6 +9,7 @@ export default async function ForumView({ params }: { params: { forumId: string 
   if (!site) return notFound();
 
   const [menus, member] = await Promise.all([getSiteMenus(site.id), requireSiteMembership()]);
+  const ban = member ? await prisma.ban.findUnique({ where: { siteId_userId: { siteId: site.id, userId: member.user.id } } }) : null;
 
   const forum = await prisma.forum.findFirst({ where: { id: params.forumId, siteId: site.id } });
   if (!forum) return notFound();
@@ -26,7 +27,7 @@ export default async function ForumView({ params }: { params: { forumId: string 
       <h2 className="text-2xl font-bold">{forum.name}</h2>
       <p className="mb-4 text-sm text-zinc-400">{forum.description}</p>
 
-      {member ? (
+      {member && !ban ? (
         <form action="/api/forums/thread" method="post" className="mb-6 space-y-2 rounded border border-zinc-800 bg-zinc-900 p-4">
           <input type="hidden" name="forumId" value={forum.id} />
           <input name="title" className="w-full rounded border border-zinc-700 bg-zinc-950 p-2" placeholder="Thread title" />
