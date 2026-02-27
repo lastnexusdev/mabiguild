@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum PermissionKey {
+  manage_site
+  manage_pages
+  manage_forums
+  moderate_posts
+  manage_members
+  manage_roles
+  manage_widgets
+  manage_shoutbox
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  username     String           @unique
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  lastSeenAt   DateTime?
+  memberships  SiteMembership[]
+  sessions     Session[]
+  threads      Thread[]         @relation("threadAuthor")
+  posts        Post[]
+  threadReads  ThreadReadState[]
+  shoutMessages ShoutMessage[]
+  bans         Ban[]
+  auditLogs    AuditLog[]       @relation("auditActor")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Site {
+  id             String            @id @default(cuid())
+  name           String
+  subdomain      String            @unique
+  description    String?
+  bannerUrl      String?
+  theme          String            @default("light")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  memberships    SiteMembership[]
+  roles          Role[]
+  pages          Page[]
+  menus          Menu[]
+  menuItems      MenuItem[]
+  widgets        WidgetPlacement[]
+  forumCategories ForumCategory[]
+  forums         Forum[]
+  threads        Thread[]
+  posts          Post[]
+  postEdits      PostEditHistory[]
+  threadReads    ThreadReadState[]
+  shoutMessages  ShoutMessage[]
+  bans           Ban[]
+  auditLogs      AuditLog[]
+}
+
+model SiteMembership {
+  id        String         @id @default(cuid())
+  userId    String
+  siteId    String
+  role      MembershipRole @default(MEMBER)
+  bio       String?
+  avatarUrl String?
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site      Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+
+  @@unique([userId, siteId])
+  @@index([siteId])
+}
+
+model Role {
+  id        String           @id @default(cuid())
+  siteId    String
+  name      String
+  color     String           @default("#ffffff")
+  label     String?
+  isSystem  Boolean          @default(false)
+  site      Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  userRoles UserRole[]
+
+  @@unique([siteId, name])
+}
+
+model Permission {
+  id        String          @id @default(cuid())
+  key       PermissionKey   @unique
+  roles     RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model UserRole {
+  id           String         @id @default(cuid())
+  membershipId String
+  roleId       String
+  membership   SiteMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role           @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, roleId])
+}
+
+model Page {
+  id          String    @id @default(cuid())
+  siteId      String
+  title       String
+  slug        String
+  content     String
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, slug])
+}
+
+model Menu {
+  id        String   @id @default(cuid())
+  siteId    String
+  name      String
+  createdAt DateTime @default(now())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  items     MenuItem[]
+}
+
+model MenuItem {
+  id        String   @id @default(cuid())
+  siteId    String
+  menuId    String
+  label     String
+  url       String
+  order     Int      @default(0)
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  menu      Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+}
+
+model WidgetPlacement {
+  id        String   @id @default(cuid())
+  siteId    String
+  key       String
+  title     String
+  content   String
+  column    Int
+  position  Int
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+}
+
+model ForumCategory {
+  id        String   @id @default(cuid())
+  siteId    String
+  name      String
+  order     Int      @default(0)
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  forums    Forum[]
+}
+
+model Forum {
+  id          String   @id @default(cuid())
+  siteId      String
+  categoryId  String
+  name        String
+  description String?
+  order       Int      @default(0)
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  category    ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  threads     Thread[]
+}
+
+model Thread {
+  id        String   @id @default(cuid())
+  siteId    String
+  forumId   String
+  authorId  String
+  title     String
+  pinned    Boolean  @default(false)
+  locked    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  forum     Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  author    User     @relation("threadAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  posts     Post[]
+  reads     ThreadReadState[]
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  siteId    String
+  threadId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  edits     PostEditHistory[]
+}
+
+model PostEditHistory {
+  id        String   @id @default(cuid())
+  siteId    String
+  postId    String
+  editorId  String
+  previousBody String
+  createdAt DateTime @default(now())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model ThreadReadState {
+  id         String   @id @default(cuid())
+  siteId     String
+  userId     String
+  threadId   String
+  lastReadAt DateTime @default(now())
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, userId, threadId])
+}
+
+model ShoutMessage {
+  id        String   @id @default(cuid())
+  siteId    String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Ban {
+  id        String   @id @default(cuid())
+  siteId    String
+  userId    String
+  reason    String
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, userId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  siteId      String
+  actorUserId String
+  action      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  actor       User     @relation("auditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+}
