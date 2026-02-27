@@ -3,7 +3,7 @@ import { MembershipRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "platform.localhost";
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "localhost";
 
 export function getSubdomainFromHost(host: string | null) {
   if (!host) return null;

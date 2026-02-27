@@ -4,7 +4,7 @@ Next.js 14 App Router + TypeScript + Tailwind + Prisma + MySQL + Docker Compose.
 
 ## Features
 - Credentials auth with NextAuth session cookies (`/register`, `/login`, `/logout`).
-- Subdomain multi-tenancy (`mysite.platform.localhost`) with middleware tenant detection.
+- Subdomain multi-tenancy (`mysite.localhost`) with middleware tenant detection.
 - Platform routes on root domain (`/`, `/dashboard`, `/dashboard/sites/new`).
 - Site public layout on subdomains:
   - header banner
@@ -68,8 +68,9 @@ Next.js 14 App Router + TypeScript + Tailwind + Prisma + MySQL + Docker Compose.
    docker compose exec web npm run prisma:seed
    ```
 4. Open:
-   - Root: `http://platform.localhost:3000`
-   - Demo tenant: `http://demo.platform.localhost:3000`
+   - Root: `http://localhost:3000`
+   - Demo tenant (subdomain): `http://demo.localhost:3000`
+   - Demo tenant fallback (no subdomain setup): `http://localhost:3000/t/demo`
 
 ## Local setup (without Docker)
 ```bash
@@ -97,13 +98,22 @@ npm run prisma:seed
 If you use Docker Compose, the app container uses `db:3306` automatically from `docker-compose.yml`.
 
 
+
+## Laragon / no-subdomain fallback
+If your Windows/Laragon setup does not route wildcard subdomains to Next.js, use path-based tenant access:
+
+- `http://localhost:3000/t/<subdomain>`
+- Example: `http://localhost:3000/t/demo`
+
+This is a built-in dev fallback and behaves like `demo.localhost:3000`.
+
 ## Seed credentials
 - Email: `admin@example.com`
 - Password: `password123`
-- Demo tenant: `demo.platform.localhost`
+- Demo tenant: `demo.localhost` (or `http://localhost:3000/t/demo`)
 
 ## Notes
-- You need local wildcard subdomain resolution for localhost development (dnsmasq or hosts entries for each tested subdomain).
+- If wildcard subdomains are unavailable, use the `/t/<subdomain>` fallback route in development.
 
 ## Database note
-If you only have MySQL installed, this project now runs against MySQL by default (`db:3306`). If you run locally without Docker, set `DATABASE_URL` to your local MySQL DSN (e.g. `mysql://root:2342sk@127.0.0.1:3306/mabiguild`).
+If you only have MySQL installed, this project runs against local MySQL for non-Docker (`127.0.0.1:3306`) and against `db:3306` only inside Docker Compose.
