@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum WidgetType {
+  RECENT_THREADS
+  ONLINE_MEMBERS
+  SHOUTBOX
+  SITE_STATS
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  username     String            @unique
+  passwordHash String
+  createdAt    DateTime          @default(now())
+  memberships  SiteMembership[]
+  auditLogs    AuditLog[]        @relation("AuditActor")
+  threads      Thread[]
+  posts        Post[]
+  readStates   ThreadReadState[]
+  shoutMessages ShoutMessage[]
+}
+
+model Site {
+  id              String            @id @default(cuid())
+  name            String
+  subdomain       String            @unique
+  description     String?
+  bannerUrl       String?
+  homepageIntro   String?           @db.Text
+  createdAt       DateTime          @default(now())
+  memberships     SiteMembership[]
+  auditLogs       AuditLog[]
+  pages           Page[]
+  menus           Menu[]
+  forumCategories ForumCategory[]
+  forums          Forum[]
+  threads         Thread[]
+  posts           Post[]
+  postEditHistory PostEditHistory[]
+  threadReadState ThreadReadState[]
+  shoutMessages   ShoutMessage[]
+  widgets         WidgetPlacement[]
+}
+
+model SiteMembership {
+  id        String         @id @default(cuid())
+  userId    String
+  siteId    String
+  role      MembershipRole @default(MEMBER)
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site      Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteId])
+  @@index([siteId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  siteId      String
+  actorUserId String
+  action      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  actor       User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([siteId, createdAt])
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  siteId      String
+  title       String
+  slug        String
+  content     String   @db.Text
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, slug])
+  @@index([siteId, isPublished])
+}
+
+model Menu {
+  id        String   @id @default(cuid())
+  siteId    String
+  label     String
+  url       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, position])
+  @@unique([siteId, label, url])
+}
+
+model ForumCategory {
+  id        String   @id @default(cuid())
+  siteId    String
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  forums    Forum[]
+
+  @@index([siteId, position])
+}
+
+model Forum {
+  id          String   @id @default(cuid())
+  siteId      String
+  categoryId  String
+  name        String
+  description String?
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  category    ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  threads     Thread[]
+
+  @@index([siteId, categoryId, position])
+}
+
+model Thread {
+  id         String   @id @default(cuid())
+  siteId     String
+  forumId    String
+  authorId   String
+  title      String
+  pinned     Boolean  @default(false)
+  locked     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  forum      Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  posts      Post[]
+  readStates ThreadReadState[]
+
+  @@index([siteId, forumId, updatedAt])
+  @@index([siteId, title])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  siteId    String
+  threadId  String
+  authorId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  edits     PostEditHistory[]
+
+  @@index([siteId, threadId, createdAt])
+}
+
+model PostEditHistory {
+  id           String   @id @default(cuid())
+  siteId       String
+  postId       String
+  editorUserId String
+  oldBody      String   @db.Text
+  createdAt    DateTime @default(now())
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, postId, createdAt])
+}
+
+model ThreadReadState {
+  id         String   @id @default(cuid())
+  siteId     String
+  threadId   String
+  userId     String
+  lastReadAt DateTime @default(now())
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, threadId, userId])
+  @@index([siteId, userId, lastReadAt])
+}
+
+model ShoutMessage {
+  id        String   @id @default(cuid())
+  siteId    String
+  userId    String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, createdAt])
+}
+
+model WidgetPlacement {
+  id       String     @id @default(cuid())
+  siteId   String
+  widget   WidgetType
+  enabled  Boolean    @default(true)
+  column   Int        @default(0)
+  position Int        @default(0)
+  site     Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, widget])
+  @@index([siteId, column, position])
+}
